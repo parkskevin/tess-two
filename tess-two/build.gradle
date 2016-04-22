@@ -67,7 +67,7 @@ android {
     // Call external ndk-build(.cmd) script to build the native code
     task ndkBuild(type: Exec) {
         commandLine getNdkBuildCmd(), '-C', file('.').absolutePath,
-				'-j', Runtime.runtime.availableProcessors()
+				'-j', 'APP_ABI=armeabi-v7a'
     }
 
     tasks.withType(JavaCompile) {
