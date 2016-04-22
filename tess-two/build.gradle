@@ -1,8 +1,40 @@
 import org.apache.tools.ant.taskdefs.condition.Os
 
+buildscript {
+    repositories {
+        jcenter()
+        mavenCentral()
+    }
+    dependencies {
+        classpath 'com.github.dcendents:android-maven-gradle-plugin:1.3'
+        classpath 'com.jfrog.bintray.gradle:gradle-bintray-plugin:1.0'
+    }
+}
+
 apply plugin: 'com.android.library'
 apply plugin: 'com.github.dcendents.android-maven'
 apply plugin: 'com.jfrog.bintray'
+
+def getNdkDir() {
+    if (System.env.ANDROID_NDK_ROOT != null)
+        return System.env.ANDROID_NDK_ROOT
+
+    Properties properties = new Properties()
+    properties.load(project.rootProject.file('local.properties').newDataInputStream())
+    def ndkdir = properties.getProperty('ndk.dir', null)
+    if (ndkdir == null)
+        throw new GradleException("NDK location not found. Define location with ndk.dir in the local.properties file or with an ANDROID_NDK_ROOT environment variable.")
+
+    return ndkdir
+}
+
+def getNdkBuildCmd() {
+    def ndkbuild = getNdkDir() + "/ndk-build"
+    if (Os.isFamily(Os.FAMILY_WINDOWS))
+        ndkbuild += ".cmd"
+
+    return ndkbuild
+}
 
 android {
     compileSdkVersion 23
@@ -34,8 +66,7 @@ android {
 
     // Call external ndk-build(.cmd) script to build the native code
     task ndkBuild(type: Exec) {
-        def ndkBuildExt = Os.isFamily(Os.FAMILY_WINDOWS) ? ".cmd" : ""
-        commandLine "ndk-build${ndkBuildExt}", '-C', file('.').absolutePath,
+        commandLine getNdkBuildCmd(), '-C', file('.').absolutePath,
 				'-j', Runtime.runtime.availableProcessors()
     }
 
@@ -45,8 +76,7 @@ android {
 
     // Cleanup task to remove previously generated binaries
     task ndkClean(type: Exec) {
-        def ndkBuildExt = Os.isFamily(Os.FAMILY_WINDOWS) ? ".cmd" : ""
-        commandLine "ndk-build${ndkBuildExt}", '-C', file('.').absolutePath, 'clean'
+        commandLine getNdkBuildCmd(), '-C', file('.').absolutePath, 'clean'
     }
 
     tasks.withType(Delete) {
